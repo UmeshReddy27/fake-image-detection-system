@@ -28,10 +28,7 @@ STATIC_FOLDER = 'static'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(STATIC_FOLDER, exist_ok=True)
 
-# --- GRAD-CAM GENERATOR ---
 def generate_gradcam(img_array, full_model, original_rgb_img):
-    """Slices the model in half to track gradients and generate a thermal heatmap."""
-    # 1. Split the model (Base Extractor vs. Classifier Head)
     base_model = full_model.layers[1]
     
     feature_map_model = tf.keras.models.Model(
@@ -45,17 +42,14 @@ def generate_gradcam(img_array, full_model, original_rgb_img):
         x = layer(x)
     classifier_model = tf.keras.models.Model(inputs=classifier_input, outputs=x)
     
-    # 2. Track the math (Gradients)
     with tf.GradientTape() as tape:
         feature_maps = feature_map_model(img_array)
         tape.watch(feature_maps)
         preds = classifier_model(feature_maps)
         score = preds[0][0]
-        
-        # If fake, track what makes it fake. If real, track what makes it real.
+      
         class_channel = 1.0 - score if score < 0.5 else score
 
-    # 3. Calculate importance weights
     grads = tape.gradient(class_channel, feature_maps)
     pooled_grads = tf.reduce_mean(grads, axis=(0, 1, 2))
     
@@ -63,14 +57,13 @@ def generate_gradcam(img_array, full_model, original_rgb_img):
     heatmap = feature_maps @ pooled_grads[..., tf.newaxis]
     heatmap = tf.squeeze(heatmap)
     
-    # Normalize between 0 and 1
     heatmap = tf.maximum(heatmap, 0)
     max_heat = tf.math.reduce_max(heatmap)
     if max_heat == 0: max_heat = 1e-10
     heatmap = heatmap / max_heat
     heatmap = heatmap.numpy()
     
-    # 4. Colorize and overlay
+
     heatmap = np.uint8(255 * heatmap)
     jet = cm.get_cmap("jet")
     jet_colors = jet(np.arange(256))[:, :3]
@@ -79,7 +72,7 @@ def generate_gradcam(img_array, full_model, original_rgb_img):
     jet_heatmap = cv2.resize(jet_heatmap, (original_rgb_img.shape[1], original_rgb_img.shape[0]))
     jet_heatmap = np.uint8(255 * jet_heatmap)
     
-    # Blend the images (60% original, 40% thermal map)
+
     superimposed_img = cv2.addWeighted(original_rgb_img, 0.6, jet_heatmap, 0.4, 0)
     return superimposed_img
 
@@ -104,7 +97,7 @@ def predict():
         heatmap_filename = f"heatmap_{file.filename}.jpg"
         heatmap_path = os.path.join(STATIC_FOLDER, heatmap_filename)
         
-        # BRANCH A: Deepfake Face Detection
+        
         if route_data['route'] == 'BOTH' and route_data['cropped_faces']:
             face_img = route_data['cropped_faces'][0] 
             face_resized = cv2.resize(face_img, (224, 224))
@@ -116,8 +109,7 @@ def predict():
             
             heatmap_img = generate_gradcam(input_array, face_model, face_img)
             cv2.imwrite(heatmap_path, cv2.cvtColor(heatmap_img, cv2.COLOR_RGB2BGR))
-            
-            # --- NEW: Dynamic Explanation ---
+           
             if real_prob > 50:
                 explanation = "🔴 <b class='text-red-400'>Red/Yellow Areas:</b> The AI focused here and found genuine photographic traits (like real skin pores, natural edge lighting, or correct physical geometry).<br>🔵 <b class='text-blue-400'>Blue Areas:</b> The AI mostly ignored these pixels."
             else:
@@ -132,8 +124,7 @@ def predict():
                 "heatmap_url": f"/static/{heatmap_filename}",
                 "explanation": explanation
             }
-            
-        # BRANCH B: General AI Art Detection
+      
         else:
             full_img = route_data['full_image'] 
             img_resized = cv2.resize(full_img, (224, 224))
@@ -145,8 +136,7 @@ def predict():
             
             heatmap_img = generate_gradcam(input_array, general_model, full_img)
             cv2.imwrite(heatmap_path, cv2.cvtColor(heatmap_img, cv2.COLOR_RGB2BGR))
-            
-            # --- NEW: Dynamic Explanation ---
+   
             if real_prob > 50:
                 explanation = "🔴 <b class='text-red-400'>Red/Yellow Areas:</b> The AI verified natural camera lens properties and genuine textures here.<br>🔵 <b class='text-blue-400'>Blue Areas:</b> The AI considered these areas irrelevant."
             else:
