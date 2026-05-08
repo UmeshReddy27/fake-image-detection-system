@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus | Deepfake & AI Detection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar and subtle animations */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        .glass-panel { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-200 font-sans antialiased min-h-screen flex flex-col items-center justify-center p-4 sm:p-8 selection:bg-indigo-500/30">
+
+    <main class="max-w-5xl w-full glass-panel rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] p-6 sm:p-10 relative overflow-hidden">
+        
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-1/2 bg-indigo-500/10 blur-[100px] pointer-events-none"></div>
+
+        <header class="text-center mb-10 relative z-10">
+            <div class="inline-flex items-center justify-center p-2 bg-indigo-500/10 rounded-xl mb-4 border border-indigo-500/20">
+                <svg class="w-6 h-6 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+            </div>
+            <h1 class="text-3xl sm:text-4xl font-bold text-white tracking-tight mb-3"> REAL/FAKE SCANNER</h1>
+            <p class="text-slate-400 text-sm sm:text-base max-w-2xl mx-auto">Don't use any real pictures.Everything is stored in public storage.</p>
+            <p class="text-slate-600 text-sm sm:text-base max-w-2xl mx-auto">Upload media for forensic analysis.</p>
+        </header>
+
+        <form id="uploadForm" class="flex flex-col items-center w-full relative z-10">
+            
+            <div id="dropzone" class="w-full max-w-3xl relative group rounded-xl border-2 border-dashed border-slate-700 bg-slate-900/50 hover:bg-slate-800/50 hover:border-indigo-500 transition-all duration-300 ease-out cursor-pointer overflow-hidden">
+                <input type="file" id="imageInput" name="file" accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20">
+                
+                <div class="p-10 flex flex-col items-center justify-center text-center pointer-events-none h-full min-h-[200px]" id="uploadPrompt">
+                    <svg class="w-10 h-10 text-slate-500 group-hover:text-indigo-400 transition-colors mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    <p class="text-slate-300 font-medium text-lg" id="fileName">Click to browse or drag image here</p>
+                    <p class="text-slate-500 text-sm mt-1">Supports JPG, PNG, WEBP (Max 10MB)</p>
+                </div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="mt-8 px-8 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-lg shadow-indigo-500/25 transition-all duration-200 transform hover:-translate-y-0.5 opacity-50 cursor-not-allowed w-full max-w-md" disabled>
+                Run Forensic Analysis
+            </button>
+        </form>
+
+        <div id="loading" class="hidden w-full max-w-3xl mx-auto mt-12 relative z-10">
+            <div class="glass-panel p-8 rounded-xl text-center border border-slate-700/50">
+                <div class="inline-block relative w-16 h-16 mb-4">
+                    <div class="absolute top-0 left-0 w-full h-full border-4 border-slate-700 rounded-full"></div>
+                    <div class="absolute top-0 left-0 w-full h-full border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+                </div>
+                <h3 class="text-lg font-medium text-white mb-1">Scanning Neural Pathways...</h3>
+                <p class="text-slate-400 text-sm">Processing image via MTCNN router and executing Grad-CAM trace.</p>
+            </div>
+        </div>
+
+        <div id="results" class="hidden w-full mt-12 relative z-10 opacity-0 transition-opacity duration-500">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-3 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></span>
+                Analysis Report
+            </h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                
+                <div class="lg:col-span-5 space-y-6">
+                    <div class="glass-panel p-6 rounded-xl border border-slate-700">
+                        <p class="text-slate-400 text-xs uppercase tracking-wider font-semibold mb-1">System Branch</p>
+                        <p id="resBranch" class="text-indigo-400 font-medium text-sm mb-5 pb-5 border-b border-slate-800"></p>
+                        
+                        <p class="text-slate-400 text-xs uppercase tracking-wider font-semibold mb-1">Final Verdict</p>
+                        <p id="resVerdict" class="text-2xl font-bold tracking-tight"></p>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-xl border border-slate-700">
+                        <div class="mb-5">
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-slate-300 font-medium">AI / Deepfake</span>
+                                <span id="resFakeProb" class="text-rose-400 font-bold"></span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden shadow-inner">
+                                <div id="fakeBar" class="bg-gradient-to-r from-rose-500 to-red-500 h-full rounded-full transition-all duration-1000 ease-out w-0"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-2">
+                                <span class="text-slate-300 font-medium">Authentic Media</span>
+                                <span id="resRealProb" class="text-emerald-400 font-bold"></span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden shadow-inner">
+                                <div id="realBar" class="bg-gradient-to-r from-emerald-500 to-green-400 h-full rounded-full transition-all duration-1000 ease-out w-0"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-7 flex flex-col space-y-6">
+                    
+                    <div class="glass-panel p-6 rounded-xl border border-slate-700 flex-grow">
+                        <div class="grid grid-cols-2 gap-4 h-full">
+                            <div class="flex flex-col h-full">
+                                <span class="text-slate-400 text-xs uppercase tracking-wider font-semibold mb-3 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg> Input</span>
+                                <div class="bg-slate-900 rounded-lg overflow-hidden flex-grow flex items-center justify-center border border-slate-800">
+                                    <img id="resOriginalImage" class="max-h-[250px] object-contain rounded" alt="Original">
+                                </div>
+                            </div>
+                            <div class="flex flex-col h-full">
+                                <span class="text-rose-400 text-xs uppercase tracking-wider font-semibold mb-3 flex items-center"><svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg> Grad-CAM Scan</span>
+                                <div class="bg-slate-900 rounded-lg overflow-hidden flex-grow flex items-center justify-center border border-slate-800">
+                                    <img id="heatmapPreview" class="max-h-[250px] object-contain rounded" alt="Heatmap">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-xl border border-indigo-500/30 bg-indigo-500/5">
+                        <div class="flex items-start">
+                            <div class="flex-shrink-0 mt-0.5">
+                                <svg class="w-5 h-5 text-indigo-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>
+                            </div>
+                            <div class="ml-3">
+                                <h3 class="text-sm font-semibold text-white mb-1">XAI Interpretation</h3>
+                                <p id="resExplanation" class="text-sm text-slate-300 leading-relaxed"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="mt-8 text-slate-500 text-sm flex items-center space-x-2">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        <a href="https://www.linkedin.com/in/umesh-eshwar-reddy-99b032251" target="_blank" rel="noopener noreferrer">View my LinkedIn Profile</a>
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        <a href="https://github.com/UmeshReddy27" target="_blank" rel="noopener noreferrer">View my GitHub Profile</a>
+    </footer>
+
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const fileName = document.getElementById('fileName');
+        const dropzone = document.getElementById('dropzone');
+        const submitBtn = document.getElementById('submitBtn');
+        const form = document.getElementById('uploadForm');
+        
+        const loading = document.getElementById('loading');
+        const results = document.getElementById('results');
+        const resOriginalImage = document.getElementById('resOriginalImage');
+        const heatmapPreview = document.getElementById('heatmapPreview');
+
+        let selectedFile = null;
+
+        // --- Drag and Drop Logic ---
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.add('border-indigo-400', 'bg-slate-800/80'), false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, () => dropzone.classList.remove('border-indigo-400', 'bg-slate-800/80'), false);
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            let dt = e.dataTransfer;
+            let files = dt.files;
+            handleFiles(files);
+        });
+
+        imageInput.addEventListener('change', function(e) {
+            handleFiles(this.files);
+        });
+
+        function handleFiles(files) {
+            if (files.length > 0) {
+                selectedFile = files[0];
+                fileName.textContent = selectedFile.name;
+                fileName.classList.add('text-indigo-400', 'font-semibold');
+                
+                // Enable button
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                
+                // Set original image preview instantly
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    resOriginalImage.src = e.target.result;
+                }
+                reader.readAsDataURL(selectedFile);
+                
+                // Hide old results
+                results.classList.add('hidden');
+                results.classList.remove('opacity-100');
+                
+                // Reset Progress bars
+                document.getElementById('fakeBar').style.width = '0%';
+                document.getElementById('realBar').style.width = '0%';
+            }
+        }
+
+        // --- Form Submission Logic ---
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!selectedFile) return;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+
+            loading.classList.remove('hidden');
+            results.classList.add('hidden');
+            results.classList.remove('opacity-100');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Analyzing...';
+
+            try {
+                const response = await fetch('/predict', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert("Analysis Error: " + data.error);
+                } else {
+                    // Populate Text
+                    document.getElementById('resBranch').textContent = data.branch_used;
+                    
+                    const verdictEl = document.getElementById('resVerdict');
+                    verdictEl.textContent = data.verdict;
+                    
+                    if(data.verdict.includes('Real')) {
+                        verdictEl.className = 'text-3xl font-bold tracking-tight text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]';
+                    } else {
+                        verdictEl.className = 'text-3xl font-bold tracking-tight text-rose-500 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]';
+                    }
+
+                    document.getElementById('resFakeProb').textContent = data.fake_confidence + '%';
+                    document.getElementById('resRealProb').textContent = data.real_confidence + '%';
+
+                    // Inject Explanation
+                    document.getElementById('resExplanation').innerHTML = data.explanation;
+
+                    // Load Heatmap
+                    heatmapPreview.src = data.heatmap_url + "?t=" + new Date().getTime(); 
+
+                    // Reveal Dashboard
+                    loading.classList.add('hidden');
+                    results.classList.remove('hidden');
+                    
+                    // Small delay to allow CSS transition to trigger
+                    setTimeout(() => {
+                        results.classList.add('opacity-100');
+                        // Animate Progress Bars
+                        document.getElementById('fakeBar').style.width = data.fake_confidence + '%';
+                        document.getElementById('realBar').style.width = data.real_confidence + '%';
+                    }, 50);
+                }
+            } catch (error) {
+                alert("A critical system error occurred.");
+                console.error(error);
+            } finally {
+                if(!loading.classList.contains('hidden')) loading.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Run Forensic Analysis';
+            }
+        });
+    </script>
+</body>
+</html>

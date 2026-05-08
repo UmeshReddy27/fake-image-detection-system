@@ -1,0 +1,19 @@
+# Virtual Environments
+env/
+fake_detection_env/
+venv/
+
+# Datasets (Too large for GitHub)
+dataset/
+cifake_dataset/
+
+# Python Cache
+__pycache__/
+*.pyc
+
+# Dynamic Folders (These should start empty on the server)
+uploads/
+static/
+
+# System Files
+.DS_Store
